@@ -110,3 +110,196 @@ class Servicio(ABC):
     @abstractmethod
     def descripcion(self):
         pass
+
+
+# ==========================================================
+# SERVICIOS ESPECIALIZADOS
+# ==========================================================
+
+class ReservaSala(Servicio):
+
+    def calcular_costo(self, horas):
+        return self.tarifa * horas
+
+    def descripcion(self):
+        return "Reserva de sala empresarial"
+
+
+class AlquilerEquipo(Servicio):
+
+    def calcular_costo(self, horas):
+        seguro = 20
+        return (self.tarifa * horas) + seguro
+
+    def descripcion(self):
+        return "Alquiler de equipos tecnológicos"
+
+
+class AsesoriaEspecializada(Servicio):
+
+    def calcular_costo(self, horas):
+        recargo = 50
+        return (self.tarifa * horas) + recargo
+
+    def descripcion(self):
+        return "Asesoría profesional especializada"
+
+
+# ==========================================================
+# RESERVA
+# ==========================================================
+
+class Reserva:
+
+    def __init__(self, cliente, servicio, horas):
+        try:
+            if not isinstance(cliente, Cliente):
+                raise ReservaError("Cliente inválido")
+
+            if not isinstance(servicio, Servicio):
+                raise ReservaError("Servicio inválido")
+
+            if horas <= 0:
+                raise ReservaError("Horas inválidas")
+
+            self.cliente = cliente
+            self.servicio = servicio
+            self.horas = horas
+            self.estado = "Pendiente"
+
+            registrar_log("Reserva creada correctamente")
+
+        except Exception as e:
+            registrar_log(f"Error en reserva: {e}")
+            raise
+
+    def confirmar(self):
+        self.estado = "Confirmada"
+        registrar_log("Reserva confirmada")
+
+    def cancelar(self):
+        self.estado = "Cancelada"
+        registrar_log("Reserva cancelada")
+
+    # Sobrecarga simulada con parámetros opcionales
+    def procesar_pago(self, impuesto=0, descuento=0):
+        try:
+            costo = self.servicio.calcular_costo(self.horas)
+
+            costo += costo * impuesto
+            costo -= costo * descuento
+
+            return round(costo, 2)
+
+        except Exception as e:
+            registrar_log(f"Error procesando pago: {e}")
+            raise ReservaError("No se pudo procesar pago") from e
+
+    def mostrar(self):
+        print("--------------------------------")
+        print(self.cliente.mostrar_info())
+        print("Servicio:", self.servicio.nombre)
+        print("Estado:", self.estado)
+        print("--------------------------------")
+
+
+# ==========================================================
+# SISTEMA GENERAL
+# ==========================================================
+
+clientes = []
+reservas = []
+
+
+def simular_operaciones():
+
+    print("===== INICIANDO SISTEMA SOFTWARE FJ =====")
+
+    operaciones = [
+
+        # Clientes válidos
+        ("cliente", "Miguel", "12345", "miguel@gmail.com"),
+        ("cliente", "Ana", "54321", "ana@hotmail.com"),
+
+        # Cliente inválido
+        ("cliente", "", "ABC", "correo"),
+
+        # Servicios válidos
+        ("reserva", 0),
+        ("reserva", 1),
+
+        # Reserva inválida
+        ("reserva_error", None),
+
+    ]
+
+    # Crear clientes
+    for op in operaciones:
+
+        try:
+            if op[0] == "cliente":
+                c = Cliente(op[1], op[2], op[3])
+                clientes.append(c)
+
+        except Exception as e:
+            print("Error cliente:", e)
+
+    # Crear servicios
+    servicios = []
+
+    try:
+        servicios.append(ReservaSala("Sala Premium", 100))
+        servicios.append(AlquilerEquipo("Portátil Gamer", 80))
+        servicios.append(AsesoriaEspecializada("Consultoría IA", 150))
+
+    except Exception as e:
+        print("Error servicio:", e)
+
+    # 10 operaciones completas
+    for i in range(10):
+
+        try:
+
+            cliente = clientes[i % len(clientes)]
+            servicio = servicios[i % len(servicios)]
+            horas = i + 1
+
+            reserva = Reserva(cliente, servicio, horas)
+
+            if i % 2 == 0:
+                reserva.confirmar()
+            else:
+                reserva.cancelar()
+
+            total = reserva.procesar_pago(
+                impuesto=0.19,
+                descuento=0.05
+            )
+
+            reserva.mostrar()
+            print("Total:", total)
+
+            reservas.append(reserva)
+
+        except Exception as e:
+            print("Error operación:", e)
+
+    # Error grave controlado
+    try:
+        r = Reserva("cliente falso", servicios[0], -5)
+
+    except Exception as e:
+        print("Error grave controlado:", e)
+
+    finally:
+        registrar_log("Simulación finalizada")
+
+    print("===== SISTEMA FINALIZADO SIN CAER =====")
+
+
+# ==========================================================
+# MAIN
+# ==========================================================
+
+if __name__ == "__main__":
+    simular_operaciones()
