@@ -1,0 +1,91 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+from abc import ABC, abstractmethod
+from datetime import datetime
+
+LOG_FILE='logs_software_fj.txt'
+
+def log(msg):
+    with open(LOG_FILE,'a',encoding='utf-8') as f:
+        f.write(f"{datetime.now()} - {msg}\n")
+
+class ClienteError(Exception): pass
+class ServicioError(Exception): pass
+class ReservaError(Exception): pass
+
+class Cliente:
+    def __init__(self,nombre,doc,correo):
+        if not nombre.strip(): raise ClienteError('Nombre vacío')
+        if not doc.isdigit(): raise ClienteError('Documento inválido')
+        if '@' not in correo: raise ClienteError('Correo inválido')
+        self.nombre=nombre; self.doc=doc; self.correo=correo
+
+class Servicio(ABC):
+    def __init__(self,nombre,tarifa): self.nombre=nombre; self.tarifa=tarifa
+    @abstractmethod
+    def calcular(self,h): pass
+class Sala(Servicio):
+    def calcular(self,h): return self.tarifa*h
+class Equipo(Servicio):
+    def calcular(self,h): return self.tarifa*h+20
+class Asesoria(Servicio):
+    def calcular(self,h): return self.tarifa*h+50
+
+clientes=[]
+servicios={
+ 'Sala Premium': Sala('Sala Premium',100),
+ 'Portátil Gamer': Equipo('Portátil Gamer',80),
+ 'Consultoría IA': Asesoria('Consultoría IA',150)
+}
+
+root=tk.Tk(); root.title('Software FJ'); root.geometry('760x520')
+notebook=ttk.Notebook(root); notebook.pack(fill='both',expand=True)
+
+# Clientes
+f1=ttk.Frame(notebook); notebook.add(f1,text='Clientes')
+for i,t in enumerate(['Nombre','Documento','Correo']): ttk.Label(f1,text=t).grid(row=i,column=0,padx=5,pady=5,sticky='w')
+entries=[]
+for i in range(3):
+    e=ttk.Entry(f1,width=35); e.grid(row=i,column=1,padx=5,pady=5); entries.append(e)
+lista_clientes=tk.Listbox(f1,width=70,height=12); lista_clientes.grid(row=4,column=0,columnspan=2,padx=5,pady=10)
+
+def agregar_cliente():
+    try:
+        c=Cliente(entries[0].get(),entries[1].get(),entries[2].get())
+        clientes.append(c)
+        lista_clientes.insert('end',f'{c.nombre} - {c.doc}')
+        log('Cliente agregado')
+    except Exception as e:
+        log(str(e)); messagebox.showerror('Error',str(e))
+
+ttk.Button(f1,text='Registrar',command=agregar_cliente).grid(row=3,column=0,columnspan=2,pady=8)
+
+# Reservas
+f2=ttk.Frame(notebook); notebook.add(f2,text='Reservas')
+cb_cliente=ttk.Combobox(f2,state='readonly',width=30)
+cb_serv=ttk.Combobox(f2,state='readonly',values=list(servicios.keys()),width=30)
+hr=ttk.Entry(f2,width=10)
+for r,(txt,w) in enumerate([('Cliente',cb_cliente),('Servicio',cb_serv),('Horas',hr)]):
+    ttk.Label(f2,text=txt).grid(row=r,column=0,padx=5,pady=5,sticky='w'); w.grid(row=r,column=1,padx=5,pady=5)
+texto=tk.Text(f2,width=80,height=18); texto.grid(row=5,column=0,columnspan=2,padx=5,pady=10)
+
+def actualizar_combo():
+    cb_cliente['values']=[c.nombre for c in clientes]
+
+def reservar():
+    try:
+        actualizar_combo()
+        idx=cb_cliente.current()
+        if idx<0: raise ReservaError('Seleccione cliente')
+        cliente=clientes[idx]
+        serv=servicios[cb_serv.get()]
+        horas=int(hr.get())
+        total=serv.calcular(horas)
+        texto.insert('end',f'Reserva -> {cliente.nombre} | {serv.nombre} | Horas:{horas} | Total:${total}\n')
+        log('Reserva exitosa')
+    except Exception as e:
+        log(str(e)); messagebox.showerror('Error',str(e))
+
+ttk.Button(f2,text='Procesar Reserva',command=reservar).grid(row=4,column=0,columnspan=2,pady=8)
+
+root.mainloop()
